@@ -1,0 +1,63 @@
+.typed {
+  font-size: 2.11em;
+}
+
+@font-face {
+  font-family: 'やさしさゴシック';
+  src: local('07やさしさゴシック'), url('yasashisa.ttf') format('truetype');
+}
+
+.hello-k8s .reveal {
+  font-family: 'やさしさゴシック', 'Open Sans', sans-serif;
+  font-size: 35px;
+  transition: all 2s ease;
+}
+
+.hello-k8s .reveal section img {
+  background: none;
+  border: none;
+  box-shadow: none;
+}
+
+.hello-k8s .reveal .left {
+  float: left;
+  width: 50%;
+}
+.hello-k8s .reveal .right {
+  float: right;
+  width: 50%;
+}
+
+.hello-k8s .reveal h1,
+.hello-k8s .reveal h2,
+.hello-k8s .reveal h3,
+.hello-k8s .reveal h4,
+.hello-k8s .reveal h5,
+.hello-k8s .reveal h6 {
+  font-family: 'やさしさゴシック', 'Quicksand', sans-serif;
+  font-weight: bold;
+  text-transform: none;
+}
+
+.emphasize {
+  transition: all 5s ease;
+}
+.stack.present .present .emphasize {
+  color: rgb(253, 48, 133);
+  text-shadow: 0 0 8px rgb(240, 123, 172), 0 0 10px rgb(240, 123, 172);
+}
+.emphasize-green {
+  transition: all 5s ease;
+}
+.stack.present .present .emphasize-green {
+  color: rgb(85, 253, 7);
+  text-shadow: 0 0 8px rgb(240, 123, 172), 0 0 10px rgb(102, 255, 71);
+}
+
+.k8s-arch img {
+  width: 80%;
+}
+
+.reveal .narrow-p p {
+  margin: 0;
+}

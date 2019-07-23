@@ -1,0 +1,757 @@
+<!DOCTYPE html>
+<html>
+  <head>
+    <meta charset="utf-8" />
+    <meta
+      name="viewport"
+      content="width=device-width, initial-scale=1.0, maximum-scale=1.0, user-scalable=no"
+    />
+
+    <title>Kubernetes入門</title>
+
+    <link rel="stylesheet" href="css/reset.css" />
+    <link rel="stylesheet" href="css/reveal.css" />
+    <link rel="stylesheet" href="css/theme/sky.css" />
+    <link rel="stylesheet" href="css/hello-k8s.css" />
+
+    <!-- Theme used for syntax highlighting of code -->
+    <link rel="stylesheet" href="lib/css/monokai.css" />
+
+    <!-- Printing and PDF exports -->
+    <script>
+      var link = document.createElement('link');
+      link.rel = 'stylesheet';
+      link.type = 'text/css';
+      link.href = window.location.search.match(/print-pdf/gi)
+        ? 'css/print/pdf.css'
+        : 'css/print/paper.css';
+      document.getElementsByTagName('head')[0].appendChild(link);
+    </script>
+  </head>
+  <body class="hello-k8s">
+    <div class="reveal">
+      <div class="slides">
+        <section data-markdown>
+          <script type="text/template">
+            # Kubernetes入門
+          </script>
+        </section>
+        <section data-markdown>
+          <script type="text/template">
+            ## Contents
+            1. Kubernetesとは
+            2. なぜKubernetesを使うのか
+            3. Kubernetesの機能
+            4. Kubernetesのアーキテクチャ
+            5. Kubernetesの使い方
+          </script>
+        </section>
+        <section>
+          <section data-markdown>
+            <script type="text/template">
+              ## Kubernetesとは
+              ![](images/kubernetes.png)
+            </script>
+          </section>
+          <section data-markdown>
+            <script type="text/template">
+              * <span class="emphasize">コンテナオーケストレーションツール</span>のデファクトスタンダード。
+              * クーバネティスと読む。
+                  * k8s (ケーエイツ)とも呼ぶ。
+              * Googleが2014年6月に立ち上げたGo製のOSS。
+              ![](images/gopher.png)
+            </script>
+          </section>
+          <section data-state="container" class="typed">
+            <span id="container"></span>
+          </section>
+          <section data-markdown>
+            <script type="text/template">
+              * コンテナは<span class="emphasize">軽量な仮想環境</span>。
+                  * ESXiとかの仮想マシンに比べて、起動が早く、消費メモリが少ない
+              * 基本は単一のアプリケーションを動かすのに特化する。
+              * 仮想マシンと同様に、イミュータブルなイメージからインスタンスを起動する。
+              * Dockerなどでコンテナを起動できる。
+            </script>
+          </section>
+          <section data-state="docker" class="typed">
+            <span id="docker"></span>
+          </section>
+          <section data-markdown>
+            <script type="text/template">
+              ![](images/docker.png)
+              * コンテナ実行・管理ツールのデファクトスタンダード。
+                  * <span class="emphasize">コンテナランタイム</span>と呼ばれる。
+              * 基本的にはコンテナを一つずつ個別に起動するツール。
+                  * なのでコンテナをたくさん使いたい場合はk8sのようなコンテナオーケストレーションツールを併用する。
+            </script>
+          </section>
+        </section>
+        <section>
+          <section data-markdown>
+            <script type="text/template">
+              ## なぜKubernetesを使うのか
+            </script>
+          </section>
+          <section data-markdown>
+            <script type="text/template">
+              ## マイクロサービスアーキテクチャしたいから。
+            </script>
+          </section>
+          <section data-state="msa" class="typed">
+            <span id="msa"></span>
+          </section>
+          <section data-markdown id="microservices">
+            <script type="text/template">
+              <div class="left">
+                <img src="https://martinfowler.com/articles/microservices/images/sketch.png" />
+                <small>https://martinfowler.com/articles/microservices</small>
+              </div>
+              <div class="right">
+                <ul>
+                  <li>アプリの<span class="emphasize">機能を細分化</span>し、それぞれを別々のプロセスで動かす。(cf. モノリシックアーキテクチャ)</li>
+                  <li>コンポーザブルでスケーラブルでフレキシブルでレジリエント。</li>
+                  <li>開発体制もスケール。</li>
+                </ul>
+              </div>
+            </script>
+          </section>
+          <section data-state="nw" class="typed">
+            <img src="images/hirameki_man.png" />
+            <div>
+              <span id="nw"></span>
+            </div>
+          </section>
+          <section data-markdown data-transition="none">
+            <script type="text/template">
+              <div>要は、従来は多機能なプロセス(モノリス)だったのが、</div>
+              <img src="images/monolith.png" />
+            </script>
+          </section>
+          <section data-markdown data-transition="none">
+            <script type="text/template">
+              <div>こうなって、</div>
+              <img src="images/microservice.png" />
+            </script>
+          </section>
+          <section data-markdown data-transition="none">
+            <script type="text/template">
+              <div>こうじゃ</div>
+              <img src="images/containerized.png" />
+            </script>
+          </section>
+          <section data-markdown data-transition="none">
+            <script type="text/template">
+              <div>デプロイ単位が細分化 ⇒ <span class="emphasize">アップデート、機能追加の容易化</span></div>
+              <img src="images/deploy_unit.png" />
+            </script>
+          </section>
+          <section data-markdown>
+            <script type="text/template">
+              <div>というメリットがある一方、<br><span class="emphasize">構造は複雑になって管理は難しくなる</span>。</div>
+              <br>
+
+              * コンテナの起動が煩雑。
+              * コンテナ間通信の制御が複雑。
+              * コンテナのデータ永続化はどうする?
+              * コンテナが落ちたり止まったりしたら回復しないと…
+            </script>
+          </section>
+          <section data-markdown>
+            <script type="text/template">
+            <div>そういう課題に立ち向かうためにKubernetesはある。</div>
+
+              ![](images/kubernetes.png)
+            </script>
+          </section>
+        </section>
+        <section>
+          <section data-markdown>
+            <script type="text/template">
+              ## Kubernetesの機能
+            </script>
+          </section>
+          <section data-markdown>
+            <script type="text/template">
+              ### クラスタリング
+              * 数百~数千のマシンをクラスタリングしてリソースプール化できる。
+              * クラスタを構成するマシンはノードと呼ばれる。
+            </script>
+          </section>
+          <section data-markdown>
+            <script type="text/template">
+              ### マニフェストによる宣言的なリソース管理
+              * アプリケーションに関わる様々な要素をリソースとして管理。
+              * リソースの定義はYAMLで記述する。
+                  * マニフェストと呼ばれる。
+                  * リソースの操作ではなく定義だけを記述する。ので宣言的。
+            </script>
+          </section>
+          <section data-markdown>
+            <script type="text/template">
+              ### リソース例
+              * <span class="emphasize">コンテナ</span>: 単一のコンテナ。直接的に定義できない。
+              * <span class="emphasize">Pod</span>: コンテナをまとめるもの。VMのような概念。デプロイの最小単位。
+              * <span class="emphasize">Deployment</span>: Podのスケーリングをしたりするもの。
+              * <span class="emphasize">Service</span>: 仮想的なルータやロードバランサのようなもの。
+              * <span class="emphasize">ConfigMap、Secret</span>: コンテナ内の設定ファイルなどを表すもの。Secretは暗号化される。
+              * <span class="emphasize">PersistentVolume</span>: 永続化ボリューム。ホストのディレクトリやNFS共有など。
+            </script>
+          </section>
+          <section data-markdown>
+            <script type="text/template">
+              ### 宣言的なリソース管理
+              * リソース定義が登録されると、Kubernetesは実リソースの状態がその定義通りになるように働く。
+              * Podのコンテナイメージを入れ替えたい場合、
+                  * <span class="emphasize">ソレダメ</span>: 古いコンテナを消して、新しいコンテナの起動を指示する。
+                  * <span class="emphasize-green">ソレマル</span>: コンテナイメージ名を書き換えたPod定義で上書きする。
+            </script>
+          </section>
+          <section data-markdown>
+            <script type="text/template">
+              ### 仮想フラットネットワーク
+              * 各Podは複数ノード間に渡ってデプロイされるけど、全Podが仮想ネットワークの同一セグメントにおかれる。
+              * 仮想ネットワークをKubernetesから使うインターフェースは<span class="emphasize">CNI</span>として標準化されている。
+              * CNIの実装はたくさんあって、フラットネットワークの実現方式が異なったりする。
+                  * Weave Net: VXLAN
+                  * Calico: BGP
+            </script>
+          </section>
+          <section data-markdown>
+            <script type="text/template">
+              ### 仮想ネットワーク内DNS
+              * ロードバランサの働きをするServiceにはDNS名が付く。
+              * このDNS名は仮想ネットワーク内のDNSでIPアドレスに解決できる。
+              * つまり、PodをServiceの裏に置けば、PodにDNS名でアクセスできる。
+                  * PodのIPアドレスは動的に振られるので、Service経由でのアクセスが基本。
+            </script>
+          </section>
+          <section data-markdown>
+            <script type="text/template">
+              ### リソースの論理的な分割 (グルーピング)
+              * Namespaceというリソースで、PodやServiceなどのリソースをグルーピングできる。
+              * Namespace毎にアクセスを隔離したりするわけではないので、管理目的で使うべし。
+            </script>
+          </section>
+          <section data-markdown>
+            <script type="text/template">
+              ### コンテナの生死監視とオートヒーリング
+              * コンテナの生死監視を定義できる。
+              * 以下のいずれかを定期的に実行して、その結果で生死判定する。
+                  * HTTPポーリング
+                  * TCP ping
+                  * 任意のコマンド
+              * コンテナが死んだと判断されると、Kubernetesが再起動してくれる。
+            </script>
+          </section>
+          <section data-markdown>
+            <script type="text/template">
+              ### その他
+              * Podのレプリケーション
+              * Podのローリングアップデート
+              * ワンショットタスク (Job)
+              * 定期実行タスク (CronJob)
+              * Pod毎、Namespace毎のリソース(CPU・メモリ)制限
+              * 仮想ネットワークのアクセスポリシー (NetworkPolicy)
+            </script>
+          </section>
+        </section>
+        <section>
+          <section data-markdown>
+            <script type="text/template">
+              ## Kubernetesのアーキテクチャ
+            </script>
+          </section>
+          <section data-markdown class="k8s-arch">
+            <script type="text/template">
+              <div>こんな感じ。</div>
+
+              ![](images/k8s_arch.png)
+            </script>
+          </section>
+          <section data-state="nw2" class="typed">
+            <img src="images/hirameki_man.png" />
+            <div>
+              <span id="nw2"></span>
+            </div>
+          </section>
+          <section data-markdown>
+            <script type="text/template">
+              Kubernetesは<br><span class="emphasize">マスタコンポーネント</span>と<span class="emphasize">ノードコンポーネント</span><br>で構成される。
+              <br>
+              それぞれのコンポーネントがHTTPSで通信しあってクラスタを形成する。
+            </script>
+          </section>
+          <section data-markdown class="narrow-p">
+            <script type="text/template">
+              マスタコンポーネントはクラスタの制御やアプリケーションの構成管理などをする。
+
+              * <span class="emphasize">kube-apiserver</span>
+
+                  リソース定義の操作をするためのREST APIを公開。<br>
+                  人類が話すのを許されているのはこのコンポだけ。
+
+              * <span class="emphasize">etcd</span>
+
+                  kube-apiserverがリソース定義などを保管するDB。<br>
+                  分散DBなので、普通はクラスタ構成にする。
+
+              * <span class="emphasize">kube-scheduler</span>
+
+                  kube-apiserverのAPIでPod定義の作成を監視して、Podのデプロイ先を決める。
+
+              * <span class="emphasize">kube-controller-manager</span>
+
+                  kube-apiserverのAPIで様々なリソース定義を監視して、実リソースの状態を定義と等しくするように働く。
+
+            </script>
+          </section>
+          <section data-markdown class="narrow-p">
+            <script type="text/template">
+              ノードコンポーネントはPodやコンテナを管理・監視する。<br>
+              これがインストールされたマシンが狭義のノード。
+
+              * <span class="emphasize">kubelet</span>
+
+                  kube-apiserverのAPIでPod定義を監視し、コンテナの起動・停止をするためにDockerとしゃべる。<br>
+                  kube-apiserverからのAPIコールを受けるHTTPSポートを持っていて、コンテナのログを返したりもする。
+
+              * <span class="emphasize">kube-proxy</span>
+
+                  kube-apiserverのAPIでService定義を監視し、Serviceへの通信を転送するための設定をホストOSに施す。
+
+            </script>
+          </section>
+          <section data-state="rest-tsurai" class="typed">
+            <div>
+              <span id="rest-tsurai"></span>
+            </div>
+          </section>
+          <section data-markdown>
+            <script type="text/template">
+              kube-apiserverのAPIはcurlなどで呼ぶこともできるけど、それだけだと辛い。<br>
+              ので、<span class="emphasize">kubectl</span>というクライアントコマンドがある。<br>
+              (使い方は後述。)
+
+              kube-apiserverへの接続情報や認証情報は`kubeconfig`というファイルに記述する。
+              `kubeconfig`も`kubectl`で生成できる。
+
+            </script>
+          </section>
+          <section data-markdown class="k8s-arch">
+            <script type="text/template">
+              <div>ね？簡単でしょ？</div>
+
+              ![](images/k8s_arch.png)
+            </script>
+          </section>
+        </section>
+        <section>
+          <section data-markdown>
+            <script type="text/template">
+              ## Kubernetesの使い方<br>(kubectlの使い方)
+            </script>
+          </section>
+          <section data-markdown>
+            <script type="text/template">
+              ### リソース定義の作成
+              * 形式: `kubectl apply -f <マニフェストファイル>`
+
+              ```shell
+              $ kubectl apply -f coredns.yaml
+              configmap/coredns created
+              deployment.apps/coredns created
+              service/kube-dns created
+              ```
+            </script>
+          </section>
+          <section data-markdown>
+            <script type="text/template">
+              ### リソース定義の更新
+              * 形式: `kubectl apply -f <マニフェストファイル>`
+
+              ```shell
+              $ kubectl apply -f coredns.yaml
+              configmap/coredns configured
+              deployment.apps/coredns configured
+              service/kube-dns unchanged
+              ```
+            </script>
+          </section>
+          <section data-markdown>
+            <script type="text/template">
+              ### リソース定義の削除
+              * 形式: `kubectl delete -f <マニフェストファイル>`
+
+              ```shell
+              $ kubectl delete -f coredns.yaml
+              configmap "coredns" deleted
+              deployment.apps "coredns" deleted
+              service "kube-dns" deleted
+              ```
+            </script>
+          </section>
+          <section data-markdown>
+            <script type="text/template">
+              ### リソース定義の個別削除
+              * 形式: `kubectl delete -n <Namespace> <リソース種別> <リソース名>`
+
+              ```shell
+              $ kubectl delete -n kube-system pod coredns-797455887b-6zpnc
+              pod "coredns-797455887b-6zpnc" deleted
+              ```
+            </script>
+          </section>
+          <section data-markdown>
+            <script type="text/template">
+              ### リソース定義の一覧
+              * 形式: `kubectl get -n <Namespace> <リソース種別>`
+              * リソース種別: `pod`, `service`, `deploy`, `pv`, etc.
+              * `-n <Namespace>`の代わりに`--all-namespaces`も可
+
+              ```shell
+              $ kubectl get -n kube-system pod
+              NAME                       READY   STATUS    RESTARTS   AGE
+              coredns-797455887b-6zpnc   1/1     Running   0          6h52m
+              coredns-797455887b-w5w5s   1/1     Running   0          6h52m
+              weave-net-gxbtc            2/2     Running   2          10h
+              ```
+            </script>
+          </section>
+          <section data-markdown>
+            <script type="text/template">
+              ### 主要なリソース定義の一覧
+              * 形式: `kubectl get all --all-namespaces`
+
+              ```shell
+              $ kubectl get all --all-namespaces
+              NAMESPACE     NAME                           READY   STATUS    RESTARTS   AGE
+              kube-system   pod/coredns-797455887b-6zpnc   1/1     Running   0          7h11m
+              kube-system   pod/coredns-797455887b-w5w5s   1/1     Running   0          7h11m
+              kube-system   pod/weave-net-gxbtc            2/2     Running   2          10h
+
+
+              NAMESPACE     NAME                 TYPE        CLUSTER-IP   EXTERNAL-IP   PORT(S)                  AGE
+              default       service/kubernetes   ClusterIP   10.0.0.1     <none>        443/TCP                  10h
+              kube-system   service/kube-dns     ClusterIP   10.0.0.10    <none>        53/UDP,53/TCP,9153/TCP   7h11m
+
+              NAMESPACE     NAME                       DESIRED   CURRENT   READY   UP-TO-DATE   AVAILABLE   NODE SELECTOR   AGE
+              kube-system   daemonset.apps/weave-net   1         1         1       1            1           <none>          10h
+
+              NAMESPACE     NAME                      READY   UP-TO-DATE   AVAILABLE   AGE
+              kube-system   deployment.apps/coredns   2/2     2            2           7h11m
+
+              NAMESPACE     NAME                                 DESIRED   CURRENT   READY   AGE
+              kube-system   replicaset.apps/coredns-797455887b   2         2         2       7h11m
+              ```
+            </script>
+          </section>
+          <section data-markdown>
+            <script type="text/template">
+              ### リソース定義内容の参照
+              * 形式: `kubectl get -n <Namespace> <リソース種別> <リソース名> -o yaml`
+              * リソース種別: `pod`, `service`, `deploy`, `pv`, etc.
+
+              ```shell
+              $ kubectl get -n kube-system pod coredns-797455887b-6zpnc -o yaml
+              apiVersion: v1
+              kind: Pod
+              metadata:
+                annotations:
+                  kubernetes.io/psp: coredns
+                creationTimestamp: "2019-07-23T13:19:33Z"
+                generateName: coredns-797455887b-
+                labels:
+                  k8s-app: kube-dns
+                  pod-template-hash: 797455887b
+                name: coredns-797455887b-6zpnc
+                namespace: kube-system
+                ownerReferences:
+                - apiVersion: apps/v1
+                  blockOwnerDeletion: true
+                  controller: true
+                  kind: ReplicaSet
+                  name: coredns-797455887b
+                  uid: 511c0088-6d4e-402d-a4c6-28730a49a7cf
+                resourceVersion: "3879"
+                selfLink: /api/v1/namespaces/kube-system/pods/coredns-797455887b-6zpnc
+                uid: 8dd0b0b6-2e06-466e-97d4-0f09da4a4ece
+              spec:
+                containers:
+                - args:
+                  - -conf
+                  - /etc/coredns/Corefile
+                  image: coredns/coredns:1.5.0
+                  imagePullPolicy: IfNotPresent
+                  livenessProbe:
+                    failureThreshold: 5
+                    httpGet:
+                      path: /health
+                      port: 8080
+                      scheme: HTTP
+                    initialDelaySeconds: 60
+                    periodSeconds: 10
+                    successThreshold: 1
+                    timeoutSeconds: 5
+                  name: coredns
+                  ports:
+                  - containerPort: 53
+                    name: dns
+                    protocol: UDP
+                  - containerPort: 53
+                    name: dns-tcp
+                    protocol: TCP
+                  - containerPort: 9153
+                    name: metrics
+                    protocol: TCP
+                  readinessProbe:
+                    failureThreshold: 3
+                    httpGet:
+                      path: /ready
+                      port: 8181
+                      scheme: HTTP
+                    periodSeconds: 10
+                    successThreshold: 1
+                    timeoutSeconds: 1
+                  resources:
+                    limits:
+                      memory: 170Mi
+                    requests:
+                      cpu: 100m
+                      memory: 70Mi
+                  securityContext:
+                    allowPrivilegeEscalation: false
+                    capabilities:
+                      add:
+                      - NET_BIND_SERVICE
+                      drop:
+                      - all
+                    readOnlyRootFilesystem: true
+                  terminationMessagePath: /dev/termination-log
+                  terminationMessagePolicy: File
+                  volumeMounts:
+                  - mountPath: /etc/coredns
+                    name: config-volume
+                    readOnly: true
+                  - mountPath: /var/run/secrets/kubernetes.io/serviceaccount
+                    name: coredns-token-bdks5
+                    readOnly: true
+                dnsPolicy: Default
+                enableServiceLinks: true
+                nodeName: k8s-master
+                nodeSelector:
+                  beta.kubernetes.io/os: linux
+                priority: 2000000000
+                priorityClassName: system-cluster-critical
+                restartPolicy: Always
+                schedulerName: default-scheduler
+                securityContext:
+                  fsGroup: 1
+                  supplementalGroups:
+                  - 1
+                serviceAccount: coredns
+                serviceAccountName: coredns
+                terminationGracePeriodSeconds: 30
+                tolerations:
+                - key: CriticalAddonsOnly
+                  operator: Exists
+                - effect: NoExecute
+                  key: node.kubernetes.io/not-ready
+                  operator: Exists
+                  tolerationSeconds: 300
+                - effect: NoExecute
+                  key: node.kubernetes.io/unreachable
+                  operator: Exists
+                  tolerationSeconds: 300
+                volumes:
+                - configMap:
+                    defaultMode: 420
+                    items:
+                    - key: Corefile
+                      path: Corefile
+                    name: coredns
+                  name: config-volume
+                - name: coredns-token-bdks5
+                  secret:
+                    defaultMode: 420
+                    secretName: coredns-token-bdks5
+              status:
+                conditions:
+                - lastProbeTime: null
+                  lastTransitionTime: "2019-07-23T13:19:33Z"
+                  status: "True"
+                  type: Initialized
+                - lastProbeTime: null
+                  lastTransitionTime: "2019-07-23T13:19:43Z"
+                  status: "True"
+                  type: Ready
+                - lastProbeTime: null
+                  lastTransitionTime: "2019-07-23T13:19:43Z"
+                  status: "True"
+                  type: ContainersReady
+                - lastProbeTime: null
+                  lastTransitionTime: "2019-07-23T13:19:33Z"
+                  status: "True"
+                  type: PodScheduled
+                containerStatuses:
+                - containerID: containerd://c9bcd3cb0fb08d8ed690ce5045de64584a6a6058e9e41037473b40ef643dbd9a
+                  image: docker.io/coredns/coredns:1.5.0
+                  imageID: docker.io/coredns/coredns@sha256:e83beb5e43f8513fa735e77ffc5859640baea30a882a11cc75c4c3244a737d3c
+                  lastState: {}
+                  name: coredns
+                  ready: true
+                  restartCount: 0
+                  state:
+                    running:
+                      startedAt: "2019-07-23T13:19:35Z"
+                hostIP: 192.168.1.200
+                phase: Running
+                podIP: 10.32.0.3
+                qosClass: Burstable
+                startTime: "2019-07-23T13:19:33Z"
+              ```
+            </script>
+          </section><section data-markdown>
+            <script type="text/template">
+              ### リソースの詳細
+              * 形式: `kubectl describe -n <Namespace> <リソース種別> <リソース名>`
+              * リソース種別: `pod`, `service`, `deploy`, `pv`, etc.
+
+              ```shell
+              $ kubectl describe -n kube-system pod coredns-797455887b-6zpnc
+              Name:                 coredns-797455887b-6zpnc
+              Namespace:            kube-system
+              Priority:             2000000000
+              Priority Class Name:  system-cluster-critical
+              Node:                 k8s-master/192.168.1.200
+              Start Time:           Tue, 23 Jul 2019 22:19:33 +0900
+              Labels:               k8s-app=kube-dns
+                                    pod-template-hash=797455887b
+              Annotations:          kubernetes.io/psp: coredns
+              Status:               Running
+              IP:                   10.32.0.3
+              Controlled By:        ReplicaSet/coredns-797455887b
+              Containers:
+                coredns:
+                  Container ID:  containerd://c9bcd3cb0fb08d8ed690ce5045de64584a6a6058e9e41037473b40ef643dbd9a
+                  Image:         coredns/coredns:1.5.0
+                  Image ID:      docker.io/coredns/coredns@sha256:e83beb5e43f8513fa735e77ffc5859640baea30a882a11cc75c4c3244a737d3c
+                  Ports:         53/UDP, 53/TCP, 9153/TCP
+                  Host Ports:    0/UDP, 0/TCP, 0/TCP
+                  Args:
+                    -conf
+                    /etc/coredns/Corefile
+                  State:          Running
+                    Started:      Tue, 23 Jul 2019 22:19:35 +0900
+                  Ready:          True
+                  Restart Count:  0
+                  Limits:
+                    memory:  170Mi
+                  Requests:
+                    cpu:        100m
+                    memory:     70Mi
+                  Liveness:     http-get http://:8080/health delay=60s timeout=5s period=10s #success=1 #failure=5
+                  Readiness:    http-get http://:8181/ready delay=0s timeout=1s period=10s #success=1 #failure=3
+                  Environment:  <none>
+                  Mounts:
+                    /etc/coredns from config-volume (ro)
+                    /var/run/secrets/kubernetes.io/serviceaccount from coredns-token-bdks5 (ro)
+              Conditions:
+                Type              Status
+                Initialized       True
+                Ready             True
+                ContainersReady   True
+                PodScheduled      True
+              Volumes:
+                config-volume:
+                  Type:      ConfigMap (a volume populated by a ConfigMap)
+                  Name:      coredns
+                  Optional:  false
+                coredns-token-bdks5:
+                  Type:        Secret (a volume populated by a Secret)
+                  SecretName:  coredns-token-bdks5
+                  Optional:    false
+              QoS Class:       Burstable
+              Node-Selectors:  beta.kubernetes.io/os=linux
+              Tolerations:     CriticalAddonsOnly
+                              node.kubernetes.io/not-ready:NoExecute for 300s
+                              node.kubernetes.io/unreachable:NoExecute for 300s
+              Events:
+                Type    Reason     Age    From                 Message
+                ----    ------     ----   ----                 -------
+                Normal  Scheduled  7h14m  default-scheduler    Successfully assigned kube-system/coredns-797455887b-6zpnc to k8s-master
+                Normal  Pulled     7h14m  kubelet, k8s-master  Container image "coredns/coredns:1.5.0" already present on machine
+                Normal  Created    7h14m  kubelet, k8s-master  Created container coredns
+                Normal  Started    7h14m  kubelet, k8s-master  Started container coredns
+              ```
+            </script>
+          </section>
+          <section data-markdown>
+            <script type="text/template">
+              ### ノードの一覧
+              * 形式: `kubectl get node`
+
+              ```shell
+              $ kubectl get node
+              NAME         STATUS   ROLES    AGE   VERSION
+              k8s-master   Ready    <none>   10h   v1.15.0
+              ```
+            </script>
+          </section>
+          <section data-markdown>
+            <script type="text/template">
+              ### コンテナログの取得
+              * 形式: `kubectl logs -n <Namespace> <Pod名> <コンテナ名>`
+              * `<コンテナ名>`は単一コンテナなら省略可
+
+              ```shell
+              $ kubectl logs -n kube-system coredns-797455887b-6zpnc coredns
+              .:53
+              2019-07-23T13:19:37.129Z [INFO] plugin/reload: Running configuration MD5 = 5967896fd70b080aca7dd9556ae11cca
+              2019-07-23T13:19:37.129Z [INFO] CoreDNS-1.5.0
+              2019-07-23T13:19:37.129Z [INFO] linux/amd64, go1.12.2, e3f9a80
+              CoreDNS-1.5.0
+              linux/amd64, go1.12.2, e3f9a80
+              ```
+            </script>
+          </section>
+          <section data-markdown>
+            <script type="text/template">
+              ### コンテナでコマンド実行
+              * 形式: `kubectl exec -it -n <Namespace> <Pod名> <コマンド>`
+              * `<コマンド>`は大抵`sh`
+
+              ```shell
+              $ kubectl exec -it -n weave weave-scope-app-7b9f46b77f-922vd sh
+              /home/weave #
+              ```
+            </script>
+          </section>
+        </section>
+      </div>
+    </div>
+
+    <script src="js/reveal.js"></script>
+
+    <script>
+      // More info about config & dependencies:
+      // - https://github.com/hakimel/reveal.js#configuration
+      // - https://github.com/hakimel/reveal.js#dependencies
+      Reveal.initialize({
+        slideNumber: true,
+        hash: true,
+        dependencies: [
+          { src: 'plugin/markdown/marked.js' },
+          { src: 'plugin/markdown/markdown.js' },
+          { src: 'plugin/notes/notes.js', async: true },
+          { src: 'plugin/highlight/highlight.js', async: true },
+        ],
+      });
+    </script>
+
+    <script src="https://cdn.jsdelivr.net/npm/typed.js@2.0.9"></script>
+    <script src="js/hello-k8s.js"></script>>
+
+    </script>
+  </body>
+</html>
